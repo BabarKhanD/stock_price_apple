@@ -1,0 +1,100 @@
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error
+import matplotlib.pyplot as plt
+
+stock_symbol = "AAPL"
+start_date = "2020-01-01"
+end_date = "2023-12-31"
+print("Downloading stock data...")
+data = yf.download(stock_symbol, start=start_date, end=end_date)
+data['Next Close'] = data['Close'].shift(-1)
+data = data.dropna()
+
+features = ['Open', 'High', 'Low', 'Volume']
+X = data[features]
+y = data['Next Close']
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+print("\nTraining Linear Regression model...")
+lr_model = LinearRegression()
+lr_model.fit(X_train, y_train)
+lr_pred = lr_model.predict(X_test)
+lr_rmse = np.sqrt(mean_squared_error(y_test, lr_pred))
+lr_r2 = lr_model.score(X_test, y_test)
+
+print("Training Random Forest model...")
+rf_model = RandomForestRegressor(n_estimators=100, random_state=42)
+rf_model.fit(X_train, y_train)
+rf_pred = rf_model.predict(X_test)
+rf_rmse = np.sqrt(mean_squared_error(y_test, rf_pred))
+rf_r2 = rf_model.score(X_test, y_test)
+
+print("\nModel Performance Comparison:")
+print(f"{'Metric':<15} {'Linear Regression':<20} {'Random Forest':<20}")
+print(f"{'RMSE':<15} {lr_rmse:<20.2f} {rf_rmse:<20.2f}")
+print(f"{'R-squared':<15} {lr_r2:<20.4f} {rf_r2:<20.4f}")
+
+plt.figure(figsize=(12, 6))
+plt.title('Linear Regression Predictions')
+plt.plot(y_test.index, y_test, label='Actual Price', color='blue')
+plt.plot(y_test.index, lr_pred, label='Predicted', color='orange')
+plt.xlabel('Date')
+plt.ylabel('Price ($)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+plt.figure(figsize=(12, 6))
+plt.title('Random Forest Predictions')
+plt.plot(y_test.index, y_test, label='Actual Price', color='blue')
+plt.plot(y_test.index, rf_pred, label='Predicted', color='green')
+plt.xlabel('Date')
+plt.ylabel('Price ($)')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+rf_importance = pd.DataFrame({
+    'Feature': features,
+    'Importance': rf_model.feature_importances_
+}).sort_values('Importance', ascending=False)
+print("\nRandom Forest Feature Importance:")
+display(rf_importance)
+
+print("\nFetching latest market data for prediction...")
+latest_data = yf.download(stock_symbol, period='5d')
+if not latest_data.empty:
+    latest_day = latest_data.iloc[-1]
+    prediction_input = pd.DataFrame({
+        'Open': [latest_day['Open']],
+        'High': [latest_day['High']],
+        'Low': [latest_day['Low']],
+        'Volume': [latest_day['Volume']]
+    })
+    next_day_pred = rf_model.predict(prediction_input)
+    
+    current_close = float(latest_day['Close'])
+    print("\nNext Trading Day Prediction:")
+    print(f"Current Close: ${current_close:.2f}")
+    print(f"Predicted Next Close: ${next_day_pred[0]:.2f}")
+    
+    plt.figure(figsize=(8, 5))
+    plt.bar(['Current Close', 'Predicted Next Close'], 
+            [current_close, next_day_pred[0]],
+            color=['blue', 'green'])
+    plt.title('Current vs Predicted Closing Price')
+    plt.ylabel('Price ($)')
+    plt.grid(axis='y')
+    plt.show()
+    
+    data.to_csv('stock_data.csv')
+    from google.colab import files
+    print("\nDownloading stock_data.csv...")
+    files.download('stock_data.csv')
+else:
+    print("Could not fetch latest market data")
