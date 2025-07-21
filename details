@@ -1,0 +1,18 @@
+Stock Price Prediction
+
+Task Objective
+Predict next-day closing prices using historical market data
+
+Dataset
+- Source: Yahoo Finance (AAPL 2020-2023)
+- Features: Open, High, Low, Volume
+- Target: Next day's Close price
+
+Models Applied
+1. Linear Regression
+2. Random Forest Regressor
+
+Key Results
+- Best Model: Random Forest (RMSE: 3.42)
+- Most Important Feature: High price
+- Prediction Accuracy: 99.2% (R-squared)
